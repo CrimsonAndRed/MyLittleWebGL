@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta content="text/html;charset=utf-8" http-equiv="Content-Type"/>
+        <link rel="shortcut icon" href="#">
+    </head>
+    <body>
+        <script type="module">
+            import init, { start, greet, init_panic_hook } from './pkg/v1.js';
+            const canvas = document.getElementById('canvas');
+
+
+            init().then(m => {
+                init_panic_hook();
+                
+                const FPS_THROTTLE = 1000.0 / 10.0; // milliseconds / frames
+                const initialTime = Date.now();
+                let lastDrawTime = -1;// In milliseconds
+
+                function render() {
+                    window.requestAnimationFrame(render);
+                    const currTime = Date.now();
+
+                    if (currTime >= lastDrawTime + FPS_THROTTLE) {
+                        lastDrawTime = currTime;
+
+                        let elapsedTime = currTime - initialTime;
+                
+                        m.start();
+                    }
+                }
+
+                render();
+            });
+
+        </script>
+        <canvas id="canvas" height="150" width="150" />
+    </body>
+</html>

@@ -1,4 +1,5 @@
 attribute vec4 position;
+uniform mat4 uTransform;
 void main() {
-	gl_Position = position;
+	gl_Position = uTransform * position;
 }

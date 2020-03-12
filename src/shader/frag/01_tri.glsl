@@ -1,4 +1,8 @@
+precision mediump float;
+uniform vec4 uColor;
+uniform float uOpacity;
+
 void main() {
-	gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+	gl_FragColor = vec4(uColor.rgb, uColor.a * uOpacity);
 }
 

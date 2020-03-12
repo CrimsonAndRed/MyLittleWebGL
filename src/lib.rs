@@ -1,6 +1,7 @@
 use wasm_bindgen::prelude::*;
 use std::rc::Rc;
 use std::cell::RefCell;
+use internal::engine::{Program};
 
 mod webgl_utils;
 mod internal;
@@ -22,13 +23,16 @@ pub fn init_panic_hook() {
 pub fn main_loop() -> Result<(), JsValue> {
     let f = Rc::new(RefCell::new(None));
     let g = f.clone();
+    let gl = webgl_utils::create_context()?;
+    let program = Program::new(gl);
 
+    //let state = State::new(gl);
     let mut last_update_time = js_sys::Date::now();
     *g.borrow_mut() = Some(Closure::wrap(Box::new(move || {
         webgl_utils::request_animation_frame(f.borrow().as_ref().unwrap());
         if js_sys::Date::now() - last_update_time > FRAME_TIMEOUT {
-            internal::engine::render().unwrap();
             last_update_time = js_sys::Date::now();
+            program.render();
         }
     }) as Box<dyn FnMut()>));
 

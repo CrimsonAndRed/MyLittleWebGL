@@ -12,6 +12,27 @@ pub fn request_animation_frame(f: &Closure<dyn FnMut()>) {
         .expect("should register `requestAnimationFrame` OK");
 }
 
+pub fn create_context() -> Result<WebGlRenderingContext, JsValue> {
+   let document = web_sys::window().unwrap().document().unwrap();
+   let canvas = document.get_element_by_id("canvas").unwrap();
+   let canvas: web_sys::HtmlCanvasElement = canvas.dyn_into::<web_sys::HtmlCanvasElement>()?;
+
+   let context = canvas
+        .get_context("webgl")?
+        .unwrap()
+        .dyn_into::<WebGlRenderingContext>()?;
+
+    context.enable(WebGlRenderingContext::BLEND);
+    context.blend_func(
+        WebGlRenderingContext::SRC_ALPHA,
+        WebGlRenderingContext::ONE_MINUS_SRC_ALPHA,
+    );
+
+    context.clear_color(0.0, 0.0, 0.0, 1.0);
+    context.clear_depth(1.0);
+    Ok(context)
+}
+
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(js_namespace = console)]

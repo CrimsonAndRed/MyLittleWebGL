@@ -10,7 +10,7 @@
             init().then(m => {
                 init_panic_hook();
                 main_loop();
-            });
+            }).catch(console.error);
 
         </script>
         <canvas id="canvas" height="550" width="550" />

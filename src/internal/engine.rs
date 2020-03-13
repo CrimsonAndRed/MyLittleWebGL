@@ -1,18 +1,23 @@
-use wasm_bindgen::JsCast;
 use web_sys::*;
-use js_sys::WebAssembly;
 
 use crate::shader::*;
 use crate::webgl_utils::*;
+
+static U_TRANSFORM: [f32; 16] = [
+    1.0, 0.0, 0.0, 0.0,
+    0.0, 1.0, 0.0, 0.0,
+    0.0, 0.0, 1.0, 0.0,
+    0.0, 0.0, 0.0, 1.0,
+];
 
 pub struct Program {
    gl: WebGlRenderingContext,
    program: WebGlProgram,
    buffer: WebGlBuffer,
-   u_color: WebGlUniformLocation,
+   color_buffer: WebGlBuffer,
    u_opacity: WebGlUniformLocation,
    u_transform: WebGlUniformLocation,
-   rect_vert_size: usize
+   indices_size: usize
 }
 
 impl Program {
@@ -27,65 +32,77 @@ impl Program {
                     .unwrap()
         );
             
+        let vertices: [f32; 8] = [  0.7, 0.7, 
+                                    -0.7, 0.7, 
+                                    -0.7, -0.7,
+                                    0.7, -0.7
+        ];
 
-        let vertices: [f32; 6] = [0.0, 0.7, -0.7, -0.7, 0.7, -0.7];
-        
-        let memory_buffer = wasm_bindgen::memory()
-            .dyn_into::<WebAssembly::Memory>()
-            .unwrap()
-            .buffer();
+        let indices: [u16; 6] = [0, 1, 2, 0, 2, 3];
 
-        let vert_ref = vertices.as_ptr() as u32 / 4;
-        let vert_array = js_sys::Float32Array::new(&memory_buffer).subarray(vert_ref, vert_ref + vertices.len() as u32);
         let buffer = context.create_buffer().unwrap();
         context.bind_buffer(WebGlRenderingContext::ARRAY_BUFFER, Some(&buffer));
-        context.buffer_data_with_array_buffer_view(WebGlRenderingContext::ARRAY_BUFFER, &vert_array, WebGlRenderingContext::STATIC_DRAW); 
+        let vert_array = unsafe { js_sys::Float32Array::view(&vertices) };
+        context.buffer_data_with_array_buffer_view(
+            WebGlRenderingContext::ARRAY_BUFFER, 
+            &vert_array, 
+            WebGlRenderingContext::STATIC_DRAW
+        ); 
+
+        let buffer_indices = context.create_buffer().unwrap();
+        context.bind_buffer(WebGlRenderingContext::ELEMENT_ARRAY_BUFFER, Some(&buffer_indices)); 
+        let indices_array = unsafe { js_sys::Uint16Array::view(&indices) };
+        context.buffer_data_with_array_buffer_view(
+            WebGlRenderingContext::ELEMENT_ARRAY_BUFFER,
+            &indices_array,
+            WebGlRenderingContext::STATIC_DRAW
+        );
+
         Self {
-            u_color: context.get_uniform_location(&program, "uColor").unwrap(),
-            u_opacity: context.get_uniform_location(&program, "uOpacity").unwrap(),
+            indices_size: indices.len(),
             u_transform: context.get_uniform_location(&program, "uTransform").unwrap(),
+            u_opacity: context.get_uniform_location(&program, "uOpacity").unwrap(),
+            color_buffer: context.create_buffer().unwrap(),
             gl: context,
             buffer,
-            rect_vert_size: vertices.len(),
-            program
+            program,
         }
     }
 
     pub fn render(&self)  {
         let context = &self.gl;
         context.use_program(Some(&self.program));
-        context.clear(
-            WebGlRenderingContext::COLOR_BUFFER_BIT | WebGlRenderingContext::DEPTH_BUFFER_BIT,
-        );
-
-
+        
         context.bind_buffer(WebGlRenderingContext::ARRAY_BUFFER, Some(&self.buffer));
         context.vertex_attrib_pointer_with_i32(0, 2, WebGlRenderingContext::FLOAT, false, 0, 0);
         context.enable_vertex_attrib_array(0);
 
-        context.uniform4f(Some(&self.u_color), 
-            js_sys::Math::random() as f32,
-            js_sys::Math::random() as f32,
-            js_sys::Math::random() as f32,
-            1.0
+        context.bind_buffer(WebGlRenderingContext::ARRAY_BUFFER, Some(&self.color_buffer));
+        context.vertex_attrib_pointer_with_i32(1, 4, WebGlRenderingContext::FLOAT, false, 0, 0);
+        context.enable_vertex_attrib_array(1);
+
+        let colors: [f32; 16] = [
+                    1.0, 0.0, 0.0, 1.0,
+                    0.0, 1.0, 0.0, 1.0,
+                    0.0, 0.0, 1.0, 1.0,
+                    1.0, 1.0, 1.0, 1.0,
+        ];
+
+        let colors_array = unsafe { js_sys::Float32Array::view(&colors) };
+        context.buffer_data_with_array_buffer_view(
+            WebGlRenderingContext::ARRAY_BUFFER,
+            &colors_array,
+            WebGlRenderingContext::STATIC_DRAW,
         );
 
-        let mut u_transform: [f32; 16] = [0.0; 16];
-        u_transform[0] = 1.0;
-        u_transform[5] = 1.0;
-        u_transform[10] = 1.0;
-        u_transform[15] = 1.0;
 
-        context.uniform_matrix4fv_with_f32_array(Some(&self.u_transform), false, &u_transform);
+        context.uniform_matrix4fv_with_f32_array(Some(&self.u_transform), false, &U_TRANSFORM);
         context.uniform1f(Some(&self.u_opacity), 1.0);
 
+        context.clear(
+            WebGlRenderingContext::COLOR_BUFFER_BIT | WebGlRenderingContext::DEPTH_BUFFER_BIT,
+        );
 
-        context.draw_arrays(WebGlRenderingContext::TRIANGLES, 0, (self.rect_vert_size / 2) as i32);
-        //context.clear_color(
-        //    js_sys::Math::random() as f32,
-        //    js_sys::Math::random() as f32,
-        //    js_sys::Math::random() as f32,
-        //    1.0,
-        //);
+        context.draw_elements_with_i32(WebGlRenderingContext::TRIANGLES, self.indices_size as i32, WebGlRenderingContext::UNSIGNED_SHORT, 0);
     }
 }

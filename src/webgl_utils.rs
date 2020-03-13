@@ -36,7 +36,7 @@ pub fn create_context() -> Result<WebGlRenderingContext, JsValue> {
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(js_namespace = console)]
-    fn log(s: &str);
+    pub fn log(s: &str);
 }
 
 pub fn compile_shader(
